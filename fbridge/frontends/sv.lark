@@ -1,0 +1,103 @@
+// Shared SystemVerilog expression / property subset and the .fbr rule DSL.
+
+?expr: impl
+
+?impl: ternary
+     | ternary "->" impl      -> implies
+     | ternary "<->" impl     -> iff
+
+?ternary: lor
+        | lor "?" ternary ":" ternary -> ite
+
+!?lor: land | lor "||" land
+!?land: bor | land "&&" bor
+!?bor: bxor | bor "|" bxor
+!?bxor: band | bxor ("^" | "~^" | "^~") band
+!?band: eq | band "&" eq
+!?eq: rel | eq ("==" | "!=" | "===" | "!==" | "==?" | "!=?") rel
+!?rel: shift | rel ("<" | "<=" | ">" | ">=") shift
+     | rel "inside" "{" items "}"         -> inside
+     | rel "dist" "{" ditems "}"          -> dist
+!?shift: add | shift ("<<" | ">>" | "<<<" | ">>>") add
+!?add: mul | add ("+" | "-") mul
+!?mul: unary | mul ("*" | "/" | "%") unary
+!?unary: postfix | ("!" | "~" | "-" | "+" | "&" | "|" | "^" | "~&" | "~|" | "~^" | "^~") unary
+
+?postfix: primary
+        | postfix "[" expr "]"                -> bitsel
+        | postfix "[" expr ":" expr "]"       -> partsel
+        | postfix "[" expr "+:" expr "]"      -> upsel
+        | postfix "[" expr "-:" expr "]"      -> downsel
+
+?primary: number
+        | ident
+        | SYSNAME "(" [arglist] ")"          -> call
+        | SYSNAME                             -> call0
+        | "(" expr ")"
+        | "{" expr "{" arglist "}" "}"        -> replicate
+        | "{" arglist "}"                     -> concat
+
+arglist: expr ("," expr)*
+
+items: item ("," item)*
+?item: expr | range
+range: "[" expr ":" rhs "]"
+?rhs: expr | DOLLAR
+ditems: ditem ("," ditem)*
+ditem: item DISTOP expr
+DISTOP: ":=" | ":/"
+
+ident: NAME ("::" NAME)* ("." NAME)*
+
+number: SIZED | BASED | UNBASED | DEC
+SIZED.3: /[0-9][0-9_]*\s*'[sS]?[bBoOdDhH]\s*[0-9a-fA-FxXzZ_?]+/
+BASED.2: /'[sS]?[bBoOdDhH]\s*[0-9a-fA-FxXzZ_?]+/
+UNBASED.2: /'[01xXzZ]/
+DEC: /[0-9][0-9_]*/
+
+// ---- properties ----
+property_spec: [clocking] [disable_iff] prop
+clocking: "@" "(" [EDGE] expr ")"
+EDGE.2: "posedge" | "negedge" | "edge"
+disable_iff: "disable" "iff" "(" expr ")"
+
+?prop: seq
+     | seq IMPLOP prop                    -> prop_impl
+     | "not" prop                         -> prop_not
+IMPLOP: "|->" | "|=>"
+
+seq: [delay] seq_elem (delay seq_elem)*
+delay: "##" DEC                           -> delay_fixed
+     | "##" "[" DEC ":" (DEC | DOLLAR) "]" -> delay_range
+seq_elem: expr [rep]
+rep: "[*" DEC [":" DEC] "]"
+
+// ---- .fbr DSL ----
+fbr: decl*
+?decl: item_decl | rule_decl | const_decl | protocol_decl
+const_decl: "const" NAME "=" expr ";"
+item_decl: "item" NAME "{" field_decl* "}"
+field_decl: [FIELD_KIND] ftype NAME ";"
+FIELD_KIND.2: "rand" | "state" | "signal"
+ftype: BASETYPE [SIGNING] [dim]            -> scalar_type
+     | "enum" [dim] "{" enum_item ("," enum_item)* "}" -> enum_type
+BASETYPE.2: "bit" | "logic"
+SIGNING.2: "signed" | "unsigned"
+dim: "[" DEC ":" DEC "]"
+enum_item: NAME ["=" expr]
+rule_decl: [SOFT] "rule" NAME ["when" expr] ":" rule_body
+SOFT.2: "soft"
+?rule_body: expr ";"                      -> body_one
+          | "{" (expr ";")+ "}"           -> body_many
+protocol_decl: "protocol" NAME ":" property_spec ";"
+
+DOLLAR: "$"
+SYSNAME: /\$[a-zA-Z_][a-zA-Z0-9_]*/
+NAME: /[a-zA-Z_][a-zA-Z0-9_]*/
+
+COMMENT: /\/\/[^\n]*/
+BLOCK_COMMENT: /\/\*(.|\n)*?\*\//
+%import common.WS
+%ignore WS
+%ignore COMMENT
+%ignore BLOCK_COMMENT

@@ -58,6 +58,8 @@ def to_sv(e: Expr) -> str:
     if isinstance(e, Var):
         return e.name
     if isinstance(e, Unary):
+        if e.op == "-" and e.a == Const(1, 1, False):
+            return "'1"
         op = UNARY_TXT.get(e.op, e.op)
         return f"{op}{_wrap(e.a, P_UNARY)}"
     if isinstance(e, Binary):
