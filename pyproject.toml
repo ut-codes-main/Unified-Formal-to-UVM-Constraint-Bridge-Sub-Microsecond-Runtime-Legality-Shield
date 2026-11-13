@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fbridge"
+version = "0.1.0"
+description = "Unified formal-to-UVM constraint bridge and sub-microsecond runtime legality shield"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "z3-solver>=4.12",
+    "lark>=1.1",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+slang = ["pyslang>=5.0"]
+cc = ["ziglang>=0.11", "cffi>=1.15"]
+dev = ["pytest>=7.4", "pyslang>=5.0", "ziglang>=0.11", "cffi>=1.15"]
+
+[project.scripts]
+uvm_formal_sync = "fbridge.sync.cli:main"
+shield_gen = "fbridge.shield.cli:main"
+eco_unreach_tracker = "fbridge.eco.cli:main"
+cex_lifter = "fbridge.cex.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fbridge*"]
+
+[tool.setuptools.package-data]
+fbridge = ["frontends/*.lark", "cex/profiles/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
