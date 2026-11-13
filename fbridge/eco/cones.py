@@ -26,6 +26,10 @@ class Driver:
     end: int
     text: str
     kind: str
+    conds: tuple[str, ...] = ()
+    cond_deps: tuple[str, ...] = ()
+    rhs: str = ""
+    partial: bool = False
 
 
 @dataclass
@@ -151,14 +155,17 @@ class _Builder:
         self.tree = tree
         self.path = path
 
-    def add(self, module, targets, deps, node, kind_, ctx_text: tuple[str, ...] = ()):
+    def add(self, module, targets, deps, node, kind_, ctx_text: tuple[str, ...] = (), conds: tuple[str, ...] = (),
+            cond_deps: set[str] | None = None, rhs: str = "", partial: bool = False):
         start, end = _span(self.tree, node)
         text = " ".join(ctx_text + (normalize(str(node)),))
-        drv = Driver(module, tuple(sorted(targets)), tuple(sorted(set(deps) - set(targets))), self.path, start, end, text, kind_)
+        drv = Driver(module, tuple(sorted(targets)), tuple(sorted(set(deps) - set(targets))), self.path, start, end, text, kind_,
+                     conds, tuple(sorted(cond_deps or ())), rhs, partial)
         for t in targets:
             self.d.drivers[t].append(drv)
 
-    def stmt(self, module: str, node, ctx: set[str], kind_: str, local: set[str], ctx_text: tuple[str, ...] = ()):
+    def stmt(self, module: str, node, ctx: set[str], kind_: str, local: set[str], ctx_text: tuple[str, ...] = (),
+             conds: tuple[str, ...] = ()):
         k = kind(node)
         if k == "ExpressionStatement":
             e = node.expr
@@ -169,43 +176,51 @@ class _Builder:
                 if kind(e) not in ASSIGN_KINDS:
                     deps |= t
                 if t:
-                    self.add(module, t, deps, node, kind_, ctx_text)
+                    partial = kind(e.left) != "IdentifierName"
+                    self.add(module, t, deps, node, kind_, ctx_text, conds, ctx, normalize(str(e.right)), partial)
             elif kind(e) in ("PostincrementExpression", "PreincrementExpression", "PostdecrementExpression", "PredecrementExpression"):
                 t, _ = _targets(e.operand, module)
                 t = {x for x in t if x.split(".", 1)[1] not in local}
                 if t:
-                    self.add(module, t, t | ctx, node, kind_, ctx_text)
+                    self.add(module, t, t | ctx, node, kind_, ctx_text, conds, ctx)
             return
         if k == "ConditionalStatement":
             cond = normalize(str(node.predicate))
             c = ctx | _idents(node.predicate, module, local)
-            self.stmt(module, node.statement, c, kind_, local, ctx_text + (f"if({cond})",))
+            self.stmt(module, node.statement, c, kind_, local, ctx_text + (f"if({cond})",), conds + (f"({cond})",))
             if node.elseClause is not None:
-                self.stmt(module, node.elseClause.clause, c, kind_, local, ctx_text + (f"else({cond})",))
+                self.stmt(module, node.elseClause.clause, c, kind_, local, ctx_text + (f"else({cond})",), conds + (f"!({cond})",))
             return
         if k == "CaseStatement":
             sel = normalize(str(node.expr))
             c = ctx | _idents(node.expr, module, local)
+            matched = []
             for it in node.items:
                 if not isinstance(it, S.SyntaxNode):
                     continue
                 ci = set(c)
                 label = "default"
                 if kind(it) == "StandardCaseItem":
-                    label = ",".join(normalize(str(e)) for e in it.expressions if isinstance(e, S.SyntaxNode))
+                    exprs = [normalize(str(e)) for e in it.expressions if isinstance(e, S.SyntaxNode)]
+                    label = ",".join(exprs)
                     for e in it.expressions:
                         if isinstance(e, S.SyntaxNode):
                             ci |= _idents(e, module, local)
-                self.stmt(module, it.clause, ci, kind_, local, ctx_text + (f"case({sel}:{label})",))
+                    here = " || ".join(f"({sel}) == ({x})" for x in exprs)
+                    matched.append(here)
+                    guard = f"({here})"
+                else:
+                    guard = f"!({' || '.join(matched)})" if matched else "1"
+                self.stmt(module, it.clause, ci, kind_, local, ctx_text + (f"case({sel}:{label})",), conds + (guard,))
             return
         if k == "SequentialBlockStatement":
             for it in node.items:
                 if isinstance(it, S.SyntaxNode):
-                    self.stmt(module, it, ctx, kind_, local, ctx_text)
+                    self.stmt(module, it, ctx, kind_, local, ctx_text, conds)
             return
         if k == "TimingControlStatement":
             tc = normalize(str(node.timingControl))
-            self.stmt(module, node.statement, ctx | _idents(node.timingControl, module, local), kind_, local, ctx_text + (tc,))
+            self.stmt(module, node.statement, ctx | _idents(node.timingControl, module, local), kind_, local, ctx_text + (tc,), conds)
             return
         if k in ("ForLoopStatement", "LoopStatement", "WhileStatement", "DoWhileStatement", "ForeverStatement", "ForeachLoopStatement"):
             loc = set(local)
@@ -219,11 +234,11 @@ class _Builder:
                 if isinstance(sub, S.SyntaxNode):
                     c = c | _idents(sub, module, loc)
                     head.append(normalize(str(sub)))
-            self.stmt(module, node.statement, c, kind_, loc, ctx_text + (f"loop({';'.join(head)})",))
+            self.stmt(module, node.statement, c, kind_, loc, ctx_text + (f"loop({';'.join(head)})",), conds + ("?loop",))
             return
         for c in node:
             if isinstance(c, S.SyntaxNode) and kind(c).endswith("Statement"):
-                self.stmt(module, c, ctx, kind_, local, ctx_text)
+                self.stmt(module, c, ctx, kind_, local, ctx_text, conds)
 
     def instance(self, mod_name: str, n) -> None:
         info = self.d.modules[mod_name]
@@ -283,7 +298,7 @@ class _Builder:
                 for a in n.assignments:
                     if isinstance(a, S.SyntaxNode) and kind(a) in ASSIGN_KINDS:
                         t, deps = _targets(a.left, name)
-                        self.add(name, t, deps | _idents(a.right, name), a, "assign")
+                        self.add(name, t, deps | _idents(a.right, name), a, "assign", rhs=normalize(str(a.right)))
             elif k in PROC_KINDS:
                 self.stmt(name, n.statement, set(), "ff" if k == "AlwaysFFBlock" else "comb", set())
             elif k == "FunctionDeclaration":

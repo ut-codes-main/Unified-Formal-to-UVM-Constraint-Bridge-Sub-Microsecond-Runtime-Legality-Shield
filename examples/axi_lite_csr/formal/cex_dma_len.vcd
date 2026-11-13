@@ -1,0 +1,248 @@
+$timescale 1ns $end
+$scope module axil_csr $end
+$var wire 1 ! clk $end
+$var wire 1 " rst_n $end
+$var wire 1 # s_axi_awvalid $end
+$var wire 1 $ s_axi_awready $end
+$var wire 32 % s_axi_awaddr $end
+$var wire 3 & s_axi_awprot $end
+$var wire 1 ' s_axi_wvalid $end
+$var wire 1 ( s_axi_wready $end
+$var wire 32 ) s_axi_wdata $end
+$var wire 4 * s_axi_wstrb $end
+$var wire 1 + s_axi_bvalid $end
+$var wire 1 , s_axi_bready $end
+$var wire 2 - s_axi_bresp $end
+$var wire 1 . s_axi_arvalid $end
+$var wire 1 / s_axi_arready $end
+$var wire 32 0 s_axi_araddr $end
+$var wire 3 1 s_axi_arprot $end
+$var wire 1 2 s_axi_rvalid $end
+$var wire 1 3 s_axi_rready $end
+$var wire 32 4 s_axi_rdata $end
+$var wire 2 5 s_axi_rresp $end
+$var wire 1 6 irq $end
+$var wire 32 7 ctrl $end
+$var wire 32 8 irq_en $end
+$var wire 32 9 irq_stat $end
+$var wire 32 : scratch0 $end
+$var wire 32 ; scratch1 $end
+$var wire 32 < dma_src $end
+$var wire 32 = dma_dst $end
+$var wire 12 > dma_len $end
+$var wire 13 ? dma_cnt $end
+$var wire 1 @ dma_busy $end
+$var wire 1 A locked $end
+$var wire 1 B aw_hs $end
+$var wire 1 C w_hs $end
+$var wire 1 D ar_hs $end
+$var wire 8 E waddr $end
+$var wire 8 F raddr $end
+$var wire 1 G wr_reserved $end
+$var wire 1 H rd_reserved $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+0"
+0#
+0$
+b0 %
+b0 &
+0'
+0(
+b0 )
+b0 *
+0+
+1,
+b0 -
+0.
+1/
+b0 0
+b0 1
+02
+13
+b0 4
+b0 5
+06
+b0 7
+b0 8
+b0 9
+b0 :
+b0 ;
+b0 <
+b0 =
+b0 >
+b0 ?
+0@
+0A
+0B
+0C
+0D
+b0 E
+b0 F
+0G
+0H
+#5
+1!
+#10
+0!
+#15
+1!
+#20
+0!
+1"
+#25
+1!
+#30
+0!
+1#
+1$
+b10000 %
+1'
+1(
+b1100101011111110 )
+b1111 *
+1B
+1C
+b10000 E
+#35
+1!
+#40
+0!
+0#
+0$
+b0 %
+0'
+0(
+b0 )
+b0 *
+1+
+b1100101011111110 :
+0B
+0C
+b0 E
+#45
+1!
+#50
+0!
+1#
+1$
+1'
+1(
+b1 )
+b1111 *
+0+
+1B
+1C
+#55
+1!
+#60
+0!
+0#
+0$
+0'
+0(
+b0 )
+b0 *
+1+
+b1 7
+0B
+0C
+#65
+1!
+#70
+0!
+0+
+1.
+b100 0
+1D
+b100 F
+#75
+1!
+#80
+0!
+0.
+0/
+b0 0
+12
+0D
+b0 F
+#85
+1!
+#90
+0!
+1#
+1$
+b101000 %
+1'
+1(
+b10100101101001011010100100000000 )
+b11 *
+1/
+02
+1B
+1C
+b101000 E
+#95
+1!
+#100
+0!
+0#
+0$
+b0 %
+0'
+0(
+b0 )
+b0 *
+1+
+b100100000000 >
+0B
+0C
+b0 E
+#105
+1!
+#110
+0!
+0+
+#115
+1!
+#120
+0!
+1#
+1$
+b101100 %
+1'
+1(
+b1 )
+b1111 *
+1B
+1C
+b101100 E
+#125
+1!
+#130
+0!
+0#
+0$
+b0 %
+0'
+0(
+b0 )
+b0 *
+1+
+b100100000000 ?
+1@
+0B
+0C
+b0 E
+#135
+1!
+#140
+0!
+0+
+b100011111100 ?
+#145
+1!
+#150
+0!
