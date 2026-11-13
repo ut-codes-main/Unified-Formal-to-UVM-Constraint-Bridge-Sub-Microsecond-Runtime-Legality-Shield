@@ -296,8 +296,8 @@ class Lowerer:
             return self.bv(e.a, t + e.n, w, s)
         if isinstance(e, Func):
             if e.name in ("$signed", "$unsigned"):
-                wa, _ = self.selfdet(e.args[0])
-                x = self.bv(e.args[0], t, wa, False)
+                wa, sa = self.selfdet(e.args[0])
+                x = self.bv(e.args[0], t, wa, sa)
                 return self._fit(x, wa, e.name == "$signed", w, s)
             if e.name == "$countones":
                 wa, sa = self.selfdet(e.args[0])

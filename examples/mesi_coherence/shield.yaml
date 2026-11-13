@@ -1,0 +1,58 @@
+name: mesi_req_shield
+
+state:
+  - {name: line,    width: 2, enum: {I: 0, S: 1, E: 2, M: 3}}
+  - {name: pend,    width: 3, enum: {NONE: 0, P_RDS: 1, P_RDU: 2, P_UPG: 3, P_WB: 4, P_EV: 5, P_WNS: 6}}
+  - {name: credits, width: 2}
+  - {name: excl,    width: 1}
+
+action:
+  - {name: op,      width: 3, enum: {ReadShared: 0, ReadUnique: 1, CleanUnique: 2, WriteBack: 3, Evict: 4, WriteNoSnp: 5}}
+  - {name: size,    width: 3}
+  - {name: addr_lo, width: 6}
+  - {name: xflag,   width: 1}
+  - {name: ns,      width: 1}
+
+init: "line == I && pend == NONE && credits == 3 && excl == 0"
+
+legal:
+  - {name: no_reserved_opcode, expr: "op <= WriteNoSnp"}
+  - {name: size_range,         expr: "size <= 6"}
+  - {name: natural_alignment,  expr: "(addr_lo & ((7'd1 << size) - 7'd1)) == 0"}
+  - {name: one_outstanding,    expr: "pend == NONE && credits != 0"}
+  - {name: rds_from_invalid,   expr: "op == ReadShared -> line == I"}
+  - {name: rdu_from_i_or_s,    expr: "op == ReadUnique -> line inside {I, S}"}
+  - {name: upgrade_from_s,     expr: "op == CleanUnique -> line == S"}
+  - {name: wb_needs_dirty,     expr: "op == WriteBack -> line == M"}
+  - {name: evict_clean_only,   expr: "op == Evict -> line inside {S, E}"}
+  - {name: wns_needs_invalid,  expr: "op == WriteNoSnp -> line == I"}
+  - {name: excl_ops_only,      expr: "xflag -> op inside {ReadShared, CleanUnique}"}
+  - {name: full_line_copyback, expr: "op inside {WriteBack, Evict} -> size == 6"}
+  - {name: secure_writeback,   expr: "op == WriteBack -> ns == 0"}
+
+transitions:
+  - {name: issue_rds, when: "op == ReadShared",  next: {pend: P_RDS, credits: "credits - 2'd1", excl: "xflag"}}
+  - {name: issue_rdu, when: "op == ReadUnique",  next: {pend: P_RDU, credits: "credits - 2'd1"}}
+  - {name: issue_upg, when: "op == CleanUnique", next: {pend: P_UPG, credits: "credits - 2'd1", excl: "xflag"}}
+  - {name: issue_wb,  when: "op == WriteBack",   next: {pend: P_WB,  credits: "credits - 2'd1"}}
+  - {name: issue_ev,  when: "op == Evict",       next: {pend: P_EV,  credits: "credits - 2'd1"}}
+  - {name: issue_wns, when: "op == WriteNoSnp",  next: {pend: P_WNS, credits: "credits - 2'd1"}}
+  - {name: comp_rds_sc, kind: env, when: "pend == P_RDS", next: {pend: NONE, line: S, credits: "credits + 2'd1"}}
+  - {name: comp_rds_uc, kind: env, when: "pend == P_RDS", next: {pend: NONE, line: E, credits: "credits + 2'd1"}}
+  - {name: comp_rdu,    kind: env, when: "pend == P_RDU", next: {pend: NONE, line: E, credits: "credits + 2'd1"}}
+  - {name: comp_upg,    kind: env, when: "pend == P_UPG", next: {pend: NONE, line: E, credits: "credits + 2'd1"}}
+  - {name: comp_upg_lost, kind: env, when: "pend == P_UPG", next: {pend: NONE, line: I, excl: "1'b0", credits: "credits + 2'd1"}}
+  - {name: comp_wb,     kind: env, when: "pend == P_WB",  next: {pend: NONE, line: I, credits: "credits + 2'd1"}}
+  - {name: comp_ev,     kind: env, when: "pend == P_EV",  next: {pend: NONE, line: I, credits: "credits + 2'd1"}}
+  - {name: comp_wns,    kind: env, when: "pend == P_WNS", next: {pend: NONE, credits: "credits + 2'd1"}}
+  - {name: core_store,  kind: env, when: "pend == NONE && line == E", next: {line: M}}
+  - {name: snoop_inv,   kind: env, when: "pend == NONE && line != I", next: {line: I, excl: "1'b0"}}
+  - {name: snoop_share, kind: env, when: "pend == NONE && line inside {E, M}", next: {line: S}}
+
+invariants:
+  - {format: smt2,  file: formal/inv_excl.smt2,   map: {cache_line_q: line, excl_mon_q: excl}}
+  - {format: aiger, file: formal/inv_wb.aag,      map: {pend_q: pend, line_q: line}}
+  - {format: btor2, file: formal/inv_credit.btor2, map: {pend_q: pend, credits_q: credits}}
+
+options:
+  reach_bound: 64

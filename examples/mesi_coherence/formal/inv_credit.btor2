@@ -1,0 +1,13 @@
+; no credit leak: an idle requester holds every credit
+1 sort bitvec 3
+2 sort bitvec 2
+3 sort bitvec 1
+4 state 1 pend_q
+5 state 2 credits_q
+6 zero 1
+7 eq 3 4 6
+8 const 2 11
+9 eq 3 5 8
+10 implies 3 7 9
+11 not 3 10
+12 bad 11
