@@ -214,6 +214,45 @@ class BDD:
             return r
         return go(f) * (1 << lv(f))
 
+    def sample(self, f: int, vars_: Sequence[int], rng) -> dict[int, int] | None:
+        if f == FALSE:
+            return None
+        order = sorted(vars_)
+        level = {v: i for i, v in enumerate(order)}
+        nv = len(order)
+        memo: dict[int, int] = {}
+
+        def lv(n: int) -> int:
+            return nv if n <= TRUE else level[self.var_of[n]]
+
+        def cnt(n: int) -> int:
+            if n == FALSE:
+                return 0
+            if n == TRUE:
+                return 1
+            r = memo.get(n)
+            if r is None:
+                l = lv(n)
+                r = cnt(self.lo[n]) * (1 << (lv(self.lo[n]) - l - 1)) + cnt(self.hi[n]) * (1 << (lv(self.hi[n]) - l - 1))
+                memo[n] = r
+            return r
+
+        out: dict[int, int] = {}
+        n, i = f, 0
+        while i < nv:
+            if lv(n) > i:
+                out[order[i]] = rng.randrange(2)
+                i += 1
+                continue
+            l = lv(n)
+            w0 = cnt(self.lo[n]) << (lv(self.lo[n]) - l - 1)
+            w1 = cnt(self.hi[n]) << (lv(self.hi[n]) - l - 1)
+            take = 1 if rng.randrange(w0 + w1) >= w0 else 0
+            out[order[i]] = take
+            n = self.hi[n] if take else self.lo[n]
+            i += 1
+        return out
+
     def pick(self, f: int) -> dict[int, int] | None:
         if f == FALSE:
             return None
@@ -428,14 +467,14 @@ class Levelized:
     depth: int
 
 
-def levelize(bdd: BDD, roots: Sequence[int], var_pos: dict[int, int] | None = None) -> Levelized:
+def levelize(bdd: BDD, roots: Sequence[int], var_pos: dict[int, int] | None = None, terminal_pos: int = 0) -> Levelized:
     # Terminals become self-loops, so a walk of exactly `depth` steps lands on 0/1 without branching.
     order = [FALSE, TRUE] + [n for n in sorted(bdd.nodes(roots)) if n > TRUE]
     index = {n: i for i, n in enumerate(order)}
     var, child = [], []
     for n in order:
         if n <= TRUE:
-            var.append(0)
+            var.append(terminal_pos)
             child.append((index[n], index[n]))
         else:
             v = bdd.var_of[n]
