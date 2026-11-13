@@ -1,0 +1,22 @@
+const CSR_SPAN = 32'h100;
+const LOCK_ADDR = 32'h80;
+
+item axil_item {
+  rand enum [0:0] { AXIL_READ = 0, AXIL_WRITE = 1 } kind;
+  rand bit [31:0] addr;
+  rand bit [31:0] data;
+  rand bit [3:0]  strb;
+  rand bit [2:0]  prot;
+}
+
+rule addr_aligned: addr[1:0] == 2'b00;
+rule addr_window: addr < CSR_SPAN;
+rule addr_not_reserved: !(addr inside {[32'h40:32'h7C]});
+rule write_strobe when kind == AXIL_WRITE: strb != 4'h0;
+rule prot_unprivileged: prot[0] == 1'b0;
+rule read_idle_payload when kind == AXIL_READ: { strb == 4'h0; data == 32'h0; }
+soft rule full_strobe: strb == 4'hF;
+
+protocol aw_stable: s_axi_awvalid && !s_axi_awready |=> s_axi_awvalid && $stable(s_axi_awaddr);
+protocol w_stable: s_axi_wvalid && !s_axi_wready |=> s_axi_wvalid && $stable(s_axi_wdata);
+protocol ar_stable: s_axi_arvalid && !s_axi_arready |=> s_axi_arvalid && $stable(s_axi_araddr);

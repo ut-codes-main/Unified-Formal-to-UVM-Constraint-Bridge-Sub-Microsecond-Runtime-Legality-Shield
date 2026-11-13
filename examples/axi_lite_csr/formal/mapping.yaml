@@ -1,0 +1,33 @@
+item: axil_item
+module: axil_env_assumes
+clock: clk
+disable: "!rst_n"
+signals:
+  rst_n: 1
+  s_axi_awvalid: 1
+  s_axi_awready: 1
+  s_axi_awaddr: 32
+  s_axi_awprot: 3
+  s_axi_wvalid: 1
+  s_axi_wready: 1
+  s_axi_wdata: 32
+  s_axi_wstrb: 4
+  s_axi_arvalid: 1
+  s_axi_arready: 1
+  s_axi_araddr: 32
+  s_axi_arprot: 3
+views:
+  - name: write
+    when: "kind == AXIL_WRITE"
+    sample: "s_axi_awvalid && s_axi_wvalid"
+    fields:
+      addr: s_axi_awaddr
+      data: s_axi_wdata
+      strb: s_axi_wstrb
+      prot: s_axi_awprot
+  - name: read
+    when: "kind == AXIL_READ"
+    sample: "s_axi_arvalid"
+    fields:
+      addr: s_axi_araddr
+      prot: s_axi_arprot
