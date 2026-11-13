@@ -30,7 +30,7 @@ cex_lifter = "fbridge.cex.cli:main"
 include = ["fbridge*"]
 
 [tool.setuptools.package-data]
-fbridge = ["frontends/*.lark", "cex/profiles/*.yaml"]
+fbridge = ["frontends/*.lark", "cex/profiles/*.yaml", "shield/harness/*.c"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
