@@ -1,0 +1,30 @@
+name: axil_csr_shield
+
+state:
+  - {name: locked,   width: 1}
+  - {name: dma_busy, width: 1}
+  - {name: ctrl_en,  width: 1}
+
+action:
+  - {name: kind, width: 1, enum: {AXIL_READ: 0, AXIL_WRITE: 1}, priority: 0}
+  - {name: addr, width: 32, priority: 1}
+  - {name: strb, width: 4, priority: 3}
+  - {name: prot, width: 3, priority: 2}
+
+init: "locked == 0 && dma_busy == 0 && ctrl_en == 0"
+
+legal:
+  - {name: locked_writes_only_lock, expr: "locked && kind == AXIL_WRITE -> addr == 32'h80"}
+  - {name: no_dma_reprogram_busy,   expr: "dma_busy && kind == AXIL_WRITE -> !(addr inside {[32'h20:32'h2C]})"}
+  - {name: dma_go_needs_enable,     expr: "!ctrl_en && kind == AXIL_WRITE -> addr != 32'h2C"}
+
+rules:
+  - {format: fbr, file: spec/axil.fbr, item: axil_item}
+  - {format: sva, file: formal/axil_env_assumes.sv, map: formal/mapping.yaml}
+
+transitions:
+  - {name: ctrl_on,    kind: env, when: "!ctrl_en",              next: {ctrl_en: "1'b1"}}
+  - {name: ctrl_off,   kind: env, when: "ctrl_en && !dma_busy",  next: {ctrl_en: "1'b0"}}
+  - {name: dma_start,  when: "kind == AXIL_WRITE && addr == 32'h2C", next: {dma_busy: "1'b1"}}
+  - {name: dma_done,   kind: env, when: "dma_busy",              next: {dma_busy: "1'b0"}}
+  - {name: lock,       when: "kind == AXIL_WRITE && addr == 32'h80", next: {locked: "!locked"}}
