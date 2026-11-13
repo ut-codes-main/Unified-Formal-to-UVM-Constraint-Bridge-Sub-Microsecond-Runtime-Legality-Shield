@@ -1,0 +1,21 @@
+name: axi4_lite
+prefix: s_axi_
+clock: clk
+reset: {signal: rst_n, active: 0}
+channels:
+  aw: {valid: awvalid, ready: awready, fields: {addr: awaddr, prot: awprot}}
+  w:  {valid: wvalid,  ready: wready,  fields: {data: wdata, strb: wstrb}}
+  b:  {valid: bvalid,  ready: bready,  fields: {resp: bresp}}
+  ar: {valid: arvalid, ready: arready, fields: {addr: araddr, prot: arprot}}
+  r:  {valid: rvalid,  ready: rready,  fields: {data: rdata, resp: rresp}}
+transactions:
+  write:
+    request: [aw, w]
+    response: b
+    item: {kind: WRITE, addr: aw.addr, prot: aw.prot, data: w.data, strb: w.strb}
+    observe: {resp: b.resp}
+  read:
+    request: [ar]
+    response: r
+    item: {kind: READ, addr: ar.addr, prot: ar.prot}
+    observe: {resp: r.resp, rdata: r.data}

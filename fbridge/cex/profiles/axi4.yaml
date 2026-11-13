@@ -1,0 +1,21 @@
+name: axi4
+prefix: s_axi_
+clock: aclk
+reset: {signal: aresetn, active: 0}
+channels:
+  aw: {valid: awvalid, ready: awready, fields: {id: awid, addr: awaddr, len: awlen, size: awsize, burst: awburst, lock: awlock, cache: awcache, prot: awprot}}
+  w:  {valid: wvalid,  ready: wready,  fields: {data: wdata, strb: wstrb, last: wlast}, beats: true}
+  b:  {valid: bvalid,  ready: bready,  fields: {id: bid, resp: bresp}}
+  ar: {valid: arvalid, ready: arready, fields: {id: arid, addr: araddr, len: arlen, size: arsize, burst: arburst, lock: arlock, cache: arcache, prot: arprot}}
+  r:  {valid: rvalid,  ready: rready,  fields: {id: rid, data: rdata, resp: rresp, last: rlast}, beats: true}
+transactions:
+  write:
+    request: [aw, w]
+    response: b
+    item: {kind: WRITE, id: aw.id, addr: aw.addr, len: aw.len, size: aw.size, burst: aw.burst, lock: aw.lock, cache: aw.cache, prot: aw.prot, data: w.data, strb: w.strb}
+    observe: {resp: b.resp}
+  read:
+    request: [ar]
+    response: r
+    item: {kind: READ, id: ar.id, addr: ar.addr, len: ar.len, size: ar.size, burst: ar.burst, lock: ar.lock, cache: ar.cache, prot: ar.prot}
+    observe: {resp: r.resp, rdata: r.data}
