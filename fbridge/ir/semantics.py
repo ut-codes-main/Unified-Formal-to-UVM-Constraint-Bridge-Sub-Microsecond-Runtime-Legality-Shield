@@ -44,7 +44,8 @@ class Lowerer:
         self.schema = schema
         self.be = backend
         self.resolver = resolver
-        self._self_cache: dict[Expr, tuple[int, bool]] = {}
+        self._self_cache: dict[int, tuple[Expr, tuple[int, bool]]] = {}
+        self._memo: dict[tuple, tuple[Expr, Any]] = {}
 
     def var_type(self, name: str) -> tuple[int, bool]:
         if name in self.schema.fields:
@@ -56,10 +57,11 @@ class Lowerer:
         raise SemanticsError(f"unknown identifier '{name}'")
 
     def selfdet(self, e: Expr) -> tuple[int, bool]:
-        r = self._self_cache.get(e)
-        if r is None:
-            r = self._selfdet(e)
-            self._self_cache[e] = r
+        hit = self._self_cache.get(id(e))
+        if hit is not None and hit[0] is e:
+            return hit[1]
+        r = self._selfdet(e)
+        self._self_cache[id(e)] = (e, r)
         return r
 
     def _selfdet(self, e: Expr) -> tuple[int, bool]:
@@ -108,6 +110,24 @@ class Lowerer:
         return evaluate(e, self.schema, {})
 
     def bool(self, e: Expr, t: int = 0):
+        key = ("b", id(e), t)
+        hit = self._memo.get(key)
+        if hit is not None and hit[0] is e:
+            return hit[1]
+        r = self._bool(e, t)
+        self._memo[key] = (e, r)
+        return r
+
+    def bv(self, e: Expr, t: int, w: int, s: bool):
+        key = ("v", id(e), t, w, s)
+        hit = self._memo.get(key)
+        if hit is not None and hit[0] is e:
+            return hit[1]
+        r = self._bv(e, t, w, s)
+        self._memo[key] = (e, r)
+        return r
+
+    def _bool(self, e: Expr, t: int = 0):
         be = self.be
         if isinstance(e, Unary) and e.op == "!":
             return be.b_not(self.bool(e.a, t))
@@ -193,7 +213,7 @@ class Lowerer:
             return self.be.extract(x, w - 1, 0, w_have)
         return self.be.ext(x, w_have, w, s and s_have)
 
-    def bv(self, e: Expr, t: int, w: int, s: bool):
+    def _bv(self, e: Expr, t: int, w: int, s: bool):
         be = self.be
         if isinstance(e, Const):
             v = e.value
