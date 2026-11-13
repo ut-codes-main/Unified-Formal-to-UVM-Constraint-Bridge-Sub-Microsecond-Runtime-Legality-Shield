@@ -1,0 +1,18 @@
+SBY 14:02:11 [axil_csr_cover_cover] Copy '../rtl/axil_csr.sv' to 'axil_csr_cover_cover/src/axil_csr.sv'.
+SBY 14:02:11 [axil_csr_cover_cover] engine_0: smtbmc boolector
+SBY 14:02:11 [axil_csr_cover_cover] base: starting process "cd axil_csr_cover_cover/src; yosys -ql ../model/design.log ../model/design.ys"
+SBY 14:02:12 [axil_csr_cover_cover] base: finished (returncode=0)
+SBY 14:02:12 [axil_csr_cover_cover] engine_0: starting process "cd axil_csr_cover_cover; yosys-smtbmc -s boolector --presat -c --noprogress -t 24 --append 0 --dump-vcd engine_0/trace%.vcd model/design_smt2.smt2"
+SBY 14:02:19 [axil_csr_cover_cover] engine_0: ##   0:00:00  Checking cover reachability in step 0..
+SBY 14:02:31 [axil_csr_cover_cover] engine_0: ##   0:00:12  Reached cover statement at axil_csr_cover.sv:19.3-19.70 in step 9.
+SBY 14:02:31 [axil_csr_cover_cover] engine_0: ##   0:00:12  Writing trace to VCD file: engine_0/trace0.vcd
+SBY 14:02:47 [axil_csr_cover_cover] engine_0: ##   0:00:28  Unreached cover statement at axil_csr_cover.sv:16.3-16.62.
+SBY 14:02:47 [axil_csr_cover_cover] engine_0: ##   0:00:28  Unreached cover statement at axil_csr_cover.sv:17.3-17.71.
+SBY 14:02:47 [axil_csr_cover_cover] engine_0: ##   0:00:28  Unreached cover statement at axil_csr_cover.sv:18.3-18.71.
+SBY 14:02:47 [axil_csr_cover_cover] engine_0: finished (returncode=1)
+SBY 14:02:47 [axil_csr_cover_cover] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:36 (36)
+SBY 14:02:47 [axil_csr_cover_cover] summary: engine_0 (smtbmc boolector) returned FAIL
+SBY 14:02:47 [axil_csr_cover_cover] summary: unreached cover statement at axil_csr_cover.sv:16.3-16.62
+SBY 14:02:47 [axil_csr_cover_cover] summary: unreached cover statement at axil_csr_cover.sv:17.3-17.71
+SBY 14:02:47 [axil_csr_cover_cover] summary: unreached cover statement at axil_csr_cover.sv:18.3-18.71
+SBY 14:02:47 [axil_csr_cover_cover] DONE (FAIL, rc=2)

@@ -1,0 +1,23 @@
+[tasks]
+cover
+prove
+
+[options]
+cover: mode cover
+cover: depth 24
+prove: mode prove
+
+[engines]
+cover: smtbmc boolector
+prove: abc pdr
+
+[script]
+read -formal -DFORMAL axil_csr.sv
+read -formal axil_env_assumes.sv
+read -formal axil_csr_cover.sv
+prep -top axil_csr
+
+[files]
+../rtl/axil_csr.sv
+axil_env_assumes.sv
+axil_csr_cover.sv
